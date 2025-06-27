@@ -128,13 +128,168 @@
 
 ### 打卡与排行榜接口 (`/api/check-in`)
 
-| 描述                 | 方法   | 路径                         | 请求体/参数示例                                          |
-| -------------------- | ------ | ---------------------------- | -------------------------------------------------------- |
-| 创建打卡任务         | `POST` | `/tasks`                     | `{"communityId": 1, "taskName": "每日算法题"}` (需认证) |
-| 用户执行打卡         | `POST` | `/tasks/{taskId}/records`    | N/A (需认证)                                             |
-| 获取个人打卡状态     | `GET`  | `/tasks/{taskId}/status`     | N/A (需认证)                                             |
-| 获取打卡排行榜       | `GET`  | `/tasks/{taskId}/leaderboard`| N/A (需认证)                                             |
+#### 打卡任务管理
 
+| 描述                     | 方法   | 路径                                        | 请求体/参数示例                                                    |
+| ------------------------ | ------ | ------------------------------------------- | ------------------------------------------------------------------ |
+| 创建社群打卡任务         | `POST` | `/communities/{communityId}/tasks`          | `{"taskName": "每日阅读", "taskDescription": "坚持每天阅读30分钟", "startDate": "2025-01-01", "periodType": "DAILY"}` (需群主/管理员权限) |
+| 获取社群所有打卡任务     | `GET`  | `/communities/{communityId}/tasks`          | `?status=1` (可选参数，筛选任务状态)                              |
+| 获取任务详情             | `GET`  | `/tasks/{taskId}`                          | N/A                                                                |
+| 更新打卡任务             | `PUT`  | `/tasks/{taskId}`                          | `{"taskName": "新任务名", "taskDescription": "新描述", "status": 1}` (需群主/管理员权限) |
+| 停用/启用打卡任务        | `PATCH`| `/tasks/{taskId}/status`                   | `?status=0` (0:停用, 1:启用, 需群主/管理员权限)                    |
+| 删除打卡任务             | `DELETE` | `/tasks/{taskId}`                        | N/A (需群主/管理员权限)                                            |
+
+#### 打卡记录管理
+
+| 描述                     | 方法   | 路径                                        | 请求体/参数示例                                                    |
+| ------------------------ | ------ | ------------------------------------------- | ------------------------------------------------------------------ |
+| 执行打卡                 | `POST` | `/tasks/{taskId}/check-in`                 | `{"notes": "今天读了《算法导论》第3章"}` (可选打卡笔记，需认证)     |
+| 获取个人打卡状态         | `GET`  | `/tasks/{taskId}/my-status`                | N/A (返回个人连续天数、总天数等，需认证)                           |
+| 获取个人打卡记录         | `GET`  | `/tasks/{taskId}/my-records`               | `?page=1&size=20&startDate=2025-01-01&endDate=2025-01-31` (需认证) |
+| 获取指定用户打卡记录     | `GET`  | `/tasks/{taskId}/users/{userId}/records`   | `?page=1&size=20` (需群主/管理员权限)                              |
+
+#### 排行榜与统计
+
+| 描述                     | 方法   | 路径                                        | 请求体/参数示例                                                    |
+| ------------------------ | ------ | ------------------------------------------- | ------------------------------------------------------------------ |
+| 获取任务打卡排行榜       | `GET`  | `/tasks/{taskId}/leaderboard`              | `?type=monthly&limit=50` (type: daily/weekly/monthly, 需认证)      |
+| 获取社群打卡总排行榜     | `GET`  | `/communities/{communityId}/leaderboard`   | `?type=monthly&limit=50` (统计社群内所有任务，需认证)              |
+| 获取任务打卡统计         | `GET`  | `/tasks/{taskId}/statistics`               | N/A (返回参与人数、总打卡数、活跃度等统计信息)                     |
+| 获取社群打卡概览         | `GET`  | `/communities/{communityId}/overview`      | N/A (返回社群所有任务的概览统计)                                   |
+
+#### 打卡日历与趋势
+
+| 描述                     | 方法   | 路径                                        | 请求体/参数示例                                                    |
+| ------------------------ | ------ | ------------------------------------------- | ------------------------------------------------------------------ |
+| 获取个人打卡日历         | `GET`  | `/tasks/{taskId}/calendar`                 | `?year=2025&month=1` (返回指定月份的打卡日历，需认证)              |
+| 获取打卡趋势分析         | `GET`  | `/tasks/{taskId}/trends`                   | `?days=30` (返回最近N天的打卡趋势图数据，需认证)                   |
+
+### 请求体示例详解
+
+#### 创建打卡任务请求体
+```json
+{
+  "taskName": "每日阅读打卡",
+  "taskDescription": "坚持每天阅读至少30分钟，记录阅读内容和心得",
+  "startDate": "2025-01-01",
+  "periodType": "DAILY"
+}
+```
+
+#### 执行打卡请求体
+```json
+{
+  "notes": "今天阅读了《Spring Boot实战》第5章，学习了自动配置的原理"
+}
+```
+
+### 响应示例
+
+#### 个人打卡状态响应
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "taskId": 1,
+    "taskName": "每日阅读打卡",
+    "todayCheckedIn": true,
+    "currentStreak": 15,
+    "longestStreak": 28,
+    "totalDays": 45,
+    "currentMonthDays": 12,
+    "checkInRate": 85.5,
+    "lastCheckInDate": "2025-01-15"
+  }
+}
+```
+
+#### 打卡排行榜响应
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "taskId": 1,
+    "taskName": "每日阅读打卡",
+    "period": "monthly",
+    "leaderboard": [
+      {
+        "rank": 1,
+        "userId": 100,
+        "username": "Alice",
+        "nickname": "爱读书的Alice",
+        "avatarUrl": "https://example.com/avatar1.jpg",
+        "checkInDays": 28,
+        "currentStreak": 28,
+        "checkInRate": 100.0
+      },
+      {
+        "rank": 2,
+        "userId": 101,
+        "username": "Bob",
+        "nickname": "学习达人Bob",
+        "avatarUrl": "https://example.com/avatar2.jpg",
+        "checkInDays": 26,
+        "currentStreak": 15,
+        "checkInRate": 92.9
+      }
+    ]
+  }
+}
+```
+
+#### 打卡日历响应
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "year": 2025,
+    "month": 1,
+    "calendar": [
+      {
+        "date": "2025-01-01",
+        "checkedIn": true,
+        "notes": "新年第一天，读了励志书籍"
+      },
+      {
+        "date": "2025-01-02",
+        "checkedIn": false,
+        "notes": null
+      },
+      {
+        "date": "2025-01-03",
+        "checkedIn": true,
+        "notes": "继续阅读技术书籍"
+      }
+    ],
+    "summary": {
+      "totalDays": 31,
+      "checkedInDays": 25,
+      "checkInRate": 80.6
+    }
+  }
+}
+```
+
+### 错误响应示例
+
+```json
+{
+  "code": 400,
+  "message": "今日已打卡，请勿重复打卡",
+  "data": null
+}
+```
+
+```json
+{
+  "code": 403,
+  "message": "您不是该社群成员，无法参与打卡",
+  "data": null
+}
+```
 ### 通用接口 (`/api/common`)
 
 | 描述                 | 方法   | 路径                         | 请求体/参数示例                                          |

@@ -24,7 +24,7 @@ const routes = [
     component: FrontPage
   },
   {
-    path: '/CommunityView',
+    path: '/community/:id',
     name: 'CommunityView',
     component: CommunityView
   },
