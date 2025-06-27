@@ -9,9 +9,9 @@ module.exports = defineConfig({
         target: 'http://localhost:8080', // Your backend server
         ws: true,
         changeOrigin: true,
-        pathRewrite: {
-          '^/api': '' // Remove /api prefix when forwarding request
-        }
+        // pathRewrite: {
+        //   '^/api': '' // Remove /api prefix when forwarding request
+        // }
       }
     }
   }

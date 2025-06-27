@@ -74,17 +74,44 @@
 | 获取当前用户信息     | `GET`  | `/me`                 | N/A (需认证)                                     |
 | 发送手机验证码       | `POST` | `/code?phone=...`     | N/A                                              |
 | 退出登录             | `POST` | `/logout`             | N/A (需认证)                                     |
+| 获取所有用户         | `GET`  | `/`                   | N/A                                              |
 | 根据ID获取用户       | `GET`  | `/{id}`               | N/A                                              |
 | 编辑用户资料         | `PUT`  | `/{id}`               | `{"email": "a@b.com", "gender": "Male"}` (需认证) |
+| 注销用户             | `DELETE` | `/{id}`             | N/A (需认证)                                     |
 
-### 社群接口 (`/api/communities`, `/api/community-join-applications`)
+### 社群接口 (`/api/community`)
 
-| 描述                     | 方法   | 路径                                 | 请求体/参数示例                                          |
-| ------------------------ | ------ | ------------------------------------ | -------------------------------------------------------- |
-| 创建社群                 | `POST` | `/api/communities`                   | `{"name": "Java学习", "description": "..."}` (需认证) |
-| 根据ID获取社群详情       | `GET`  | `/api/communities/{id}`              | N/A                                                      |
-| 申请加入社群             | `POST` | `/api/community-join-applications`   | `{"communityId": 1, "reason": "..."}` (需认证)       |
-| 群主审批申请             | `POST` | `/api/community-join-applications/approve` | `{"applicationId": 1}` (需群主认证)                |
+| 描述                     | 方法   | 路径                  | 请求体/参数示例                                          |
+| ------------------------ | ------ | --------------------- | -------------------------------------------------------- |
+| 创建社群                 | `POST` | `/create`             | `{"name": "Java学习", "description": "..."}` (需认证) |
+| 审核创建的社群           | `POST` | `/updateStatus`       | `?communityId=1&status=1` (需管理员权限)               |
+| 获取待审核社群列表       | `GET`  | `/listByStatus`       | `?status=0` (需管理员权限)                             |
+| 获取社群列表             | `GET`  | `/list`               | `?page=1&size=10`                                       |
+| 根据ID获取社群详情       | `GET`  | `/{id}`               | N/A                                                      |
+| 获取社群成员列表         | `GET`  | `/members/{id}`       | N/A                                                      |
+
+### 社群申请接口 (`/api/community/applications`)
+
+| 描述                     | 方法   | 路径                         | 请求体/参数示例                                          |
+| ------------------------ | ------ | ---------------------------- | -------------------------------------------------------- |
+| 用户提交加群申请         | `POST` | `/apply`                     | `?communityId=1&reason=我想学习Java` (需认证)          |
+| 获取待审核申请列表       | `GET`  | `/pending`                   | `?communityId=1` (需群主/管理员权限)                   |
+| 获取所有待审核申请       | `GET`  | `/pendingAll`                | N/A (需群主/管理员权限)                                |
+| 审核加群申请             | `POST` | `/review`                    | `?applicationId=1&status=APPROVED` (需群主/管理员权限)  |
+| 退出社群                 | `POST` | `/leave`                     | `?communityId=1` (需认证，群主不可退出)                |
+| 踢出群成员               | `POST` | `/deleteMebers`              | `?communityId=1&userId=2` (需群主/管理员权限)          |
+| 设置管理员               | `POST` | `/setAdmin`                  | `?communityId=1&userId=2` (需群主权限)                 |
+| 禁言                     | `POST` | `/setBans`                   | `?communityId=1&userId=2` (需群主/管理员权限)          |
+| 解除禁言                 | `POST` | `/cancelBans`                | `?communityId=1&userId=2` (需群主/管理员权限)          |
+| 取消管理员               | `POST` | `/cancelAdmins`              | `?communityId=1&userId=2` (需群主权限)                 |
+
+### 聊天接口 (`/api/chat`)
+
+| 描述                     | 方法   | 路径                         | 请求体/参数示例                                          |
+| ------------------------ | ------ | ---------------------------- | -------------------------------------------------------- |
+| 获取历史聊天记录         | `GET`  | `/history`                   | `?communityId=1&page=1&size=20`                         |
+| 获取离线期间聊天记录     | `GET`  | `/history-offline`           | `?communityId=1&page=1&size=20`                         |
+| 获取在线用户数           | `GET`  | `/online/count`              | `?communityId=1`                                         |
 
 ### 实时聊天接口 (WebSocket/STOMP)
 
@@ -107,6 +134,12 @@
 | 用户执行打卡         | `POST` | `/tasks/{taskId}/records`    | N/A (需认证)                                             |
 | 获取个人打卡状态     | `GET`  | `/tasks/{taskId}/status`     | N/A (需认证)                                             |
 | 获取打卡排行榜       | `GET`  | `/tasks/{taskId}/leaderboard`| N/A (需认证)                                             |
+
+### 通用接口 (`/api/common`)
+
+| 描述                 | 方法   | 路径                         | 请求体/参数示例                                          |
+| -------------------- | ------ | ---------------------------- | -------------------------------------------------------- |
+| 文件上传             | `POST` | `/upload`                    | `file` (multipart/form-data)                             |
 
 ---
 
