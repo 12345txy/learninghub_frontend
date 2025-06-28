@@ -3,7 +3,8 @@ import VueRouter from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import LoginRegister from '../views/LoginRegister.vue'
 import FrontPage from '../views/FrontPage.vue'
-import CommunityView from '../views/CommunityView.vue'
+// import CommunityView from '../views/CommunityView.vue'
+import CommunityView_copy from '../views/CommunityView_copy.vue'
 
 Vue.use(VueRouter)
 
@@ -25,9 +26,19 @@ const routes = [
   },
   {
     path: '/community/:id',
-    name: 'CommunityView',
-    component: CommunityView
+    name: 'CommunityView_copy',
+    component: CommunityView_copy
   },
+  // {
+  //   path: '/community/:id',
+  //   name: 'CommunityView',
+  //   component: CommunityView
+  // },
+  // {
+  //   path: '/community/:id/check-in',
+  //   name: 'CheckInView',
+  //   component: CheckInView
+  // },
   {
     path: '/about',
     name: 'about',
