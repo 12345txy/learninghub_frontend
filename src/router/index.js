@@ -5,6 +5,7 @@ import LoginRegister from '../views/LoginRegister.vue'
 import FrontPage from '../views/FrontPage.vue'
 // import CommunityView from '../views/CommunityView.vue'
 import CommunityView_copy from '../views/CommunityView_copy.vue'
+import UserProfile from '../views/UserProfile.vue'
 
 Vue.use(VueRouter)
 
@@ -28,6 +29,11 @@ const routes = [
     path: '/community/:id',
     name: 'CommunityView_copy',
     component: CommunityView_copy
+  },
+  {
+    path: '/profile/:id',
+    name: 'UserProfile',
+    component: UserProfile
   },
   // {
   //   path: '/community/:id',

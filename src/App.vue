@@ -70,10 +70,10 @@
       return {
         drawer: false,
         menuItems: [
-          { title: '首页', icon: 'mdi-vuejs', iconColor: 'green', to: '/FrontPage' },
-          { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/UserProfile' },
-          { title: '发布帖子', icon: 'mdi-pencil', iconColor: 'blue', to: '/CreatePost' },
-          { title: '兴趣社群', icon: 'mdi-account-group', iconColor: 'purple', to: '/communities' },
+          { title: '发现社群', icon: 'mdi-radar', iconColor: 'indigo', to: '/FrontPage' },
+          { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/profile/:id' }
+          // { title: '发布帖子', icon: 'mdi-pencil', iconColor: 'blue', to: '/CreatePost' },
+          // { title: '兴趣社群', icon: 'mdi-account-group', iconColor: 'purple', to: '/communities' },
         ],
         currentItemTitle: '欢迎来到游学系统',
         snackbar: {
@@ -87,6 +87,22 @@
     created() {
       try {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        // 🔥 动态设置个人主页路由
+        if (user && user.userId) {
+          const profileItem = this.menuItems.find(item => item.title === '个人主页');
+          if (profileItem) {
+            profileItem.to = `/profile/${user.userId}`;
+          }
+        } else {
+          // 如果没有用户ID，默认跳转到 '/profile/me'
+          const profileItem = this.menuItems.find(item => item.title === '个人主页');
+          if (profileItem) {
+            profileItem.to = '/profile/me';
+          }
+        }
+        
+        // 管理员菜单逻辑
         if (user && (user.isAdmin === '1' || user.isAdmin === 1)) {
           this.menuItems.push({
             title: '后台管理',

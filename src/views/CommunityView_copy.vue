@@ -118,6 +118,13 @@
                                             <v-icon x-small left>mdi-circle</v-icon>
                                             在线
                                         </v-chip>
+                                        
+                                        <!-- 禁言状态标识 -->
+                                        <v-chip v-if="member.isBanned" x-small color="error" text-color="white"
+                                            class="ml-1">
+                                            <v-icon x-small left>mdi-account-remove</v-icon>
+                                            已禁言
+                                        </v-chip>
                                     </v-list-item-title>
 
                                     <!-- 加入时间或在线时间 -->
@@ -149,11 +156,18 @@
                                                 </v-list-item-icon>
                                                 <v-list-item-title>降为普通成员</v-list-item-title>
                                             </v-list-item>
-                                            <v-list-item @click="banMember(member)">
+                                            <!-- 禁言/解禁选项 -->
+                                            <v-list-item @click="banMember(member)" v-if="!member.isBanned">
                                                 <v-list-item-icon>
                                                     <v-icon small color="warning">mdi-account-remove</v-icon>
                                                 </v-list-item-icon>
                                                 <v-list-item-title>禁言成员</v-list-item-title>
+                                            </v-list-item>
+                                            <v-list-item @click="unbanMember(member)" v-if="member.isBanned">
+                                                <v-list-item-icon>
+                                                    <v-icon small color="success">mdi-account-check</v-icon>
+                                                </v-list-item-icon>
+                                                <v-list-item-title>解除禁言</v-list-item-title>
                                             </v-list-item>
                                             <v-list-item @click="removeMember(member)" v-if="isOwner">
                                                 <v-list-item-icon>
@@ -389,37 +403,149 @@
         </v-dialog>
 
         <!-- 成员管理对话框 -->
-        <v-dialog v-model="manageDialog" max-width="800px">
-            <v-card>
+        <v-dialog v-model="manageDialog" max-width="900px" scrollable>
+            <v-card style="max-height: 80vh;">
                 <v-card-title>
+                    <v-icon class="mr-2">mdi-account-cog</v-icon>
                     <span class="text-h5">成员管理</span>
                     <v-spacer></v-spacer>
                     <v-btn icon @click="manageDialog = false">
                         <v-icon>mdi-close</v-icon>
                     </v-btn>
                 </v-card-title>
-                <v-card-text>
-                    <!-- 待审核申请 -->
-                    <v-subheader>待审核申请</v-subheader>
-                    <v-list v-if="pendingApplications.length > 0">
-                        <v-list-item v-for="application in pendingApplications" :key="application.id">
-                            <v-list-item-content>
-                                <v-list-item-title>{{ application.username }}</v-list-item-title>
-                                <v-list-item-subtitle>{{ application.reason }}</v-list-item-subtitle>
-                            </v-list-item-content>
-                            <v-list-item-action>
-                                <v-btn small color="success" @click="reviewApplication(application.id, 'APPROVED')"
-                                    class="mr-1">
-                                    同意
+                
+                <v-card-text style="max-height: calc(80vh - 120px); overflow-y: auto;">
+                    <!-- 待审核申请部分 -->
+                    <div class="mb-4">
+                        <div class="d-flex align-center justify-space-between mb-3">
+                            <h3 class="text-h6">
+                                <v-icon color="orange" class="mr-2">mdi-clock-outline</v-icon>
+                                待审核申请
+                            </h3>
+                            <v-btn small outlined color="primary" @click="fetchPendingApplications">
+                                <v-icon small left>mdi-refresh</v-icon>
+                                刷新
                                 </v-btn>
-                                <v-btn small color="error" @click="reviewApplication(application.id, 'REJECTED')">
+                        </div>
+
+                        <div v-if="pendingApplications.length > 0">
+                            <v-card v-for="application in pendingApplications" :key="application.id" 
+                                    outlined class="mb-3">
+                                <v-card-text class="pa-3">
+                                    <v-row align="center">
+                                        <!-- 用户头像和基本信息 -->
+                                        <v-col cols="12" md="6">
+                                            <div class="d-flex align-center">
+                                                <v-avatar size="40" class="mr-3">
+                                                    <v-img :src="application.avatarUrl || defaultAvatar"></v-img>
+                                                </v-avatar>
+                                                <div>
+                                                    <div class="text-body-1 font-weight-medium">
+                                                        {{ application.username }}
+                                                    </div>
+                                                    <div class="text-caption text--secondary">
+                                                        ID: {{ application.userId }}
+                                                    </div>
+                                                    <div class="text-caption text--secondary">
+                                                        申请时间: {{ formatApplicationTime(application.createdAt) }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </v-col>
+
+                                        <!-- 申请理由 -->
+                                        <v-col cols="12" md="6">
+                                            <div class="mb-2">
+                                                <div class="text-caption text--secondary mb-1">申请理由:</div>
+                                                <div class="text-body-2 pa-2 rounded" style="background-color: #f5f5f5; border-left: 3px solid #2196f3;">
+                                                    {{ application.reason }}
+                                                </div>
+                                            </div>
+                                        </v-col>
+
+                                        <!-- 操作按钮 -->
+                                        <v-col cols="12">
+                                            <div class="d-flex justify-end">
+                                                <v-btn small color="error" outlined 
+                                                       @click="reviewApplication(application.id, 'REJECTED')"
+                                                       class="mr-2">
+                                                    <v-icon small left>mdi-close</v-icon>
                                     拒绝
                                 </v-btn>
-                            </v-list-item-action>
-                        </v-list-item>
-                    </v-list>
-                    <div v-else class="text-center py-4 text--secondary">
-                        暂无待审核申请
+                                                <v-btn small color="success" 
+                                                       @click="reviewApplication(application.id, 'APPROVED')">
+                                                    <v-icon small left>mdi-check</v-icon>
+                                                    同意
+                                                </v-btn>
+                                            </div>
+                                        </v-col>
+                                    </v-row>
+                                </v-card-text>
+                            </v-card>
+
+                            <!-- 批量操作区域 -->
+                            <v-card outlined class="mt-3">
+                                <v-card-text class="pa-3">
+                                    <div class="text-caption text--secondary mb-2">批量操作</div>
+                                    <div class="d-flex">
+                                        <v-btn small color="success" outlined class="mr-2" 
+                                               @click="batchApproveApplications" 
+                                               :disabled="pendingApplications.length === 0">
+                                            <v-icon small left>mdi-check-all</v-icon>
+                                            全部同意 ({{ pendingApplications.length }})
+                                        </v-btn>
+                                        <v-btn small color="error" outlined 
+                                               @click="batchRejectApplications"
+                                               :disabled="pendingApplications.length === 0">
+                                            <v-icon small left>mdi-close-box-multiple</v-icon>
+                                            全部拒绝
+                                        </v-btn>
+                                    </div>
+                                </v-card-text>
+                            </v-card>
+                        </div>
+
+                        <div v-else class="text-center py-6">
+                            <v-icon large color="grey lighten-2">mdi-inbox</v-icon>
+                            <div class="mt-3 text--secondary">暂无待审核申请</div>
+                            <div class="text-caption mt-1">当有新的加入申请时，会显示在这里</div>
+                        </div>
+                    </div>
+
+                    <v-divider class="my-4"></v-divider>
+
+                    <!-- 成员统计信息 -->
+                    <div>
+                        <h3 class="text-h6 mb-3">
+                            <v-icon color="primary" class="mr-2">mdi-chart-box</v-icon>
+                            成员统计
+                        </h3>
+                        <v-row>
+                            <v-col cols="6" md="3">
+                                <v-card outlined class="text-center pa-3">
+                                    <div class="text-h4 primary--text">{{ totalMembers }}</div>
+                                    <div class="text-caption">总成员</div>
+                                </v-card>
+                            </v-col>
+                            <v-col cols="6" md="3">
+                                <v-card outlined class="text-center pa-3">
+                                    <div class="text-h4 success--text">{{ onlineCount }}</div>
+                                    <div class="text-caption">在线成员</div>
+                                </v-card>
+                            </v-col>
+                            <v-col cols="6" md="3">
+                                <v-card outlined class="text-center pa-3">
+                                    <div class="text-h4 orange--text">{{ pendingApplications.length }}</div>
+                                    <div class="text-caption">待审核</div>
+                                </v-card>
+                            </v-col>
+                            <v-col cols="6" md="3">
+                                <v-card outlined class="text-center pa-3">
+                                    <div class="text-h4 info--text">{{ bannedMembers }}</div>
+                                    <div class="text-caption">被禁言</div>
+                                </v-card>
+                            </v-col>
+                        </v-row>
                     </div>
                 </v-card-text>
             </v-card>
@@ -1484,6 +1610,16 @@
                 
                 return sorted;
             },
+
+            // 计算总成员数
+            totalMembers() {
+                return this.members.length;
+            },
+
+            // 计算被禁言成员数
+            bannedMembers() {
+                return this.members.filter(member => member.isBanned).length;
+            },
         },
 
         async created() {
@@ -1564,8 +1700,9 @@
                     console.error('❌ 无法连接WebSocket: 缺少用户ID');
                     return;
                 }
-
-                const token = this.$axios.defaults.headers.common['Authorization'] || localStorage.getItem('token');
+                
+               const rawToken = this.$axios.defaults.headers.common['Authorization'] || localStorage.getItem('token');
+                const token = rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`;
                 if (!token) {
                     console.error('❌ 无法连接WebSocket: 缺少token');
                     return;
@@ -2217,7 +2354,7 @@
                 }
             },
 
-            // 获取成员列表 - 适配新接口格式
+            // 获取成员列表 - 根据role字段判断禁言状态
             async fetchMembers() {
                 try {
                     const response = await this.$axios.get(`/api/community/members/${this.communityId}`);
@@ -2234,32 +2371,46 @@
                                     const userResponse = await this.$axios.get(`/api/users/${member.userId}`);
                                     const userInfo = userResponse.data.code === 1 ? userResponse.data.data : {};
 
+                                    // 判断禁言状态：role为"ban"表示被禁言
+                                    const isBanned = member.role.toLowerCase() === 'ban';
+                                    
+                                    // 获取实际角色：如果被禁言，实际角色应该是member
+                                    const actualRole = isBanned ? 'MEMBER' : member.role.toUpperCase();
+
                                     return {
                                         id: member.id,
                                         userId: member.userId,
                                         communityId: member.communityId,
-                                        role: member.role.toUpperCase(), // 转换为大写以匹配现有逻辑
+                                        role: actualRole, // 显示的角色（禁言用户显示为MEMBER）
+                                        originalRole: member.role, // 保存原始role用于判断禁言状态
                                         joinedAt: member.joinedAt,
                                         // 用户详细信息
                                         username: userInfo.username || `用户${member.userId}`,
                                         avatarUrl: userInfo.avatarUrl || '',
                                         email: userInfo.email || '',
-                                        // 在线状态（暂时设为false，后续可通过WebSocket更新）
-                                        isOnline: false
+                                        // 在线状态
+                                        isOnline: false,
+                                        // 根据role字段判断禁言状态
+                                        isBanned: isBanned
                                     };
                                 } catch (userError) {
                                     console.error(`获取用户${member.userId}信息失败:`, userError);
-                                    // 如果获取用户信息失败，使用默认值
+                                    
+                                    const isBanned = member.role.toLowerCase() === 'ban';
+                                    const actualRole = isBanned ? 'MEMBER' : member.role.toUpperCase();
+                                    
                                     return {
                                         id: member.id,
                                         userId: member.userId,
                                         communityId: member.communityId,
-                                        role: member.role.toUpperCase(),
+                                        role: actualRole,
+                                        originalRole: member.role,
                                         joinedAt: member.joinedAt,
                                         username: `用户${member.userId}`,
                                         avatarUrl: '',
                                         email: '',
-                                        isOnline: false
+                                        isOnline: false,
+                                        isBanned: isBanned
                                     };
                                 }
                             })
@@ -2267,6 +2418,11 @@
 
                         this.members = processedMembers;
                         console.log('处理后的成员列表:', this.members);
+                        
+                        // 调试：输出每个成员的禁言状态
+                        this.members.forEach(member => {
+                            console.log(`👤 成员 ${member.username}: role=${member.originalRole}, isBanned=${member.isBanned}`);
+                        });
                     } else {
                         console.warn('成员列表数据格式异常:', response.data);
                         this.members = [];
@@ -2277,39 +2433,41 @@
                 }
             },
 
-            // 获取当前用户信息
+            // 获取当前用户信息（根据role判断禁言状态）
             async getCurrentUser() {
                 try {
                     console.log('🔍 正在获取当前用户信息...');
                     const response = await this.$axios.get('/api/users/me');
                     console.log('📱 用户API响应:', response.data);
 
-                    // 修复：确保用户ID为数字类型
                     if (response.data && response.data.code === 1 && response.data.data && response.data.data.userId) {
                         const userData = response.data.data;
-                        this.currentUserId = parseInt(userData.userId); // 确保为数字类型
-                        console.log('✅ 当前用户ID (数字类型):', this.currentUserId, typeof this.currentUserId);
-                        console.log('👤 用户完整信息:', userData);
+                        this.currentUserId = parseInt(userData.userId);
+                        console.log('✅ 当前用户ID:', this.currentUserId);
 
                         if (Array.isArray(this.members) && this.members.length > 0) {
-                            const member = this.members.find(m => m.id === this.currentUserId);
+                            const member = this.members.find(m => m.userId === this.currentUserId);
                             if (member) {
+                                // 根据originalRole判断禁言状态
+                                this.isBanned = member.originalRole && member.originalRole.toLowerCase() === 'ban';
+                                
+                                // 设置显示角色
+                                if (member.originalRole && member.originalRole.toLowerCase() === 'ban') {
+                                    this.userRole = 'MEMBER'; // 被禁言的用户显示为普通成员
+                                } else {
                                 this.userRole = member.role || 'MEMBER';
-                                this.isBanned = member.isBanned || false;
-                                console.log('👤 用户角色:', this.userRole, '是否被禁:', this.isBanned);
+                                }
+                                
+                                console.log('👤 用户角色:', this.userRole, '原始role:', member.originalRole, '是否被禁:', this.isBanned);
                             } else {
-                                console.warn('⚠️ 在成员列表中未找到当前用户，可能还不是该社群成员');
+                                console.warn('⚠️ 在成员列表中未找到当前用户');
                                 this.userRole = 'VISITOR';
                                 this.isBanned = false;
                             }
                         } else {
-                            console.warn('⚠️ 成员列表为空或不是数组，设置为访客角色');
                             this.userRole = 'VISITOR';
                             this.isBanned = false;
                         }
-                    } else {
-                        console.error('❌ 用户API响应格式异常:', response.data);
-                        console.log('🔍 检查响应结构 - code:', response.data?.code, 'data:', response.data?.data);
                     }
                 } catch (error) {
                     console.error('❌ 获取用户信息失败:', error);
@@ -2319,47 +2477,157 @@
                 }
             },
 
-            // 退出社群
+            // 退出社群（完善响应处理）
             async leaveCommunity() {
                 if (!confirm('确定要退出这个社群吗？')) return;
 
                 try {
-                    await this.$axios.post('/api/community/applications/leave', null, {
+                    console.log('🚪 正在退出社群...', this.communityId);
+                    
+                    const response = await this.$axios.post('/api/community/applications/leave', null, {
                         params: { communityId: this.communityId }
                     });
-                    alert('已退出社群');
+                    
+                    console.log('📝 退出社群响应:', response.data);
+                    
+                    // 检查响应格式（后端返回 code: 200 表示成功）
+                    if (response.data && response.data.code === 200) {
+                        console.log('✅ 退出社群成功');
+                        alert('已成功退出社群');
+                        
+                        // 断开WebSocket连接
+                        this.disconnectWebSocket();
+                        
+                        // 跳转到首页
                     this.$router.push('/FrontPage');
+                    } else {
+                        console.error('❌ 退出社群失败:', response.data);
+                        const errorMsg = response.data?.message || response.data?.msg || '退出失败';
+                        alert('退出失败：' + errorMsg);
+                    }
                 } catch (error) {
-                    console.error('退出社群失败:', error);
-                    alert('退出失败，请重试');
+                    console.error('❌ 退出社群异常:', error);
+                    
+                    // 详细错误处理
+                    if (error.response) {
+                        const errorMsg = error.response.data?.message || 
+                                       error.response.data?.msg || 
+                                       `服务器错误 (${error.response.status})`;
+                        alert('退出失败：' + errorMsg);
+                        console.error('响应错误:', error.response.data);
+                    } else if (error.request) {
+                        alert('退出失败：网络连接错误，请检查网络后重试');
+                        console.error('请求错误:', error.request);
+                    } else {
+                        alert('退出失败：' + error.message);
+                        console.error('其他错误:', error.message);
+                    }
                 }
             },
 
-            // 获取待审核申请
+            // 获取待审核申请（完善版）
             async fetchPendingApplications() {
                 try {
+                    console.log('🔍 正在获取待审核申请列表...');
                     const response = await this.$axios.get('/api/community/applications/pending', {
                         params: { communityId: this.communityId }
                     });
-                    this.pendingApplications = response.data || [];
+
+                    console.log('📝 待审核申请原始数据:', response.data);
+
+                    if (response.data.code === 1 && Array.isArray(response.data.data)) {
+                        // 处理申请数据，获取申请用户的详细信息
+                        const applications = response.data.data;
+                        
+                        const processedApplications = await Promise.all(
+                            applications.map(async (application) => {
+                                try {
+                                    // 根据userId获取用户详细信息
+                                    const userResponse = await this.$axios.get(`/api/users/${application.userId}`);
+                                    const userInfo = userResponse.data.code === 1 ? userResponse.data.data : {};
+
+                                    return {
+                                        id: application.id,
+                                        communityId: application.communityId,
+                                        userId: application.userId,
+                                        status: application.status,
+                                        reason: application.reason || '无申请理由',
+                                        createdAt: application.createdAt,
+                                        updatedAt: application.updatedAt,
+                                        // 用户详细信息
+                                        username: userInfo.username || `用户${application.userId}`,
+                                        avatarUrl: userInfo.avatarUrl || '',
+                                        email: userInfo.email || ''
+                                    };
+                                } catch (userError) {
+                                    console.error(`获取申请用户${application.userId}信息失败:`, userError);
+                                    // 如果获取用户信息失败，使用默认值
+                                    return {
+                                        ...application,
+                                        username: `用户${application.userId}`,
+                                        avatarUrl: '',
+                                        email: '',
+                                        reason: application.reason || '无申请理由'
+                                    };
+                                }
+                            })
+                        );
+
+                        this.pendingApplications = processedApplications;
+                        console.log('✅ 待审核申请处理完成:', this.pendingApplications);
+                    } else {
+                        console.warn('⚠️ 待审核申请数据格式异常:', response.data);
+                        this.pendingApplications = [];
+                    }
                 } catch (error) {
-                    console.error('获取待审核申请失败:', error);
+                    console.error('❌ 获取待审核申请失败:', error);
                     this.pendingApplications = [];
                 }
             },
 
-            // 审核申请
+            // 审核申请（修复响应处理）
             async reviewApplication(applicationId, status) {
                 try {
-                    await this.$axios.post('/api/community/applications/review', null, {
+                    console.log('🔍 正在审核申请:', applicationId, '状态:', status);
+                    
+                    const response = await this.$axios.post('/api/community/applications/review', null, {
                         params: { applicationId, status }
                     });
+                    
+                    console.log('📝 审核申请响应:', response.data);
+                    
+                    // 检查响应格式
+                    if (response.data && response.data.code === 1) {
+                        console.log('✅ 审核申请成功');
                     alert(status === 'APPROVED' ? '已同意申请' : '已拒绝申请');
-                    this.fetchPendingApplications();
-                    this.fetchMembers();
+                        
+                        // 刷新相关数据
+                            await Promise.all([
+                            this.fetchPendingApplications(),
+                            this.fetchMembers()
+                        ]);
+                    } else {
+                        console.error('❌ 审核申请失败:', response.data);
+                        const errorMsg = response.data?.msg || response.data?.message || '审核失败';
+                        alert('操作失败：' + errorMsg);
+                    }
                 } catch (error) {
-                    console.error('审核申请失败:', error);
-                    alert('操作失败，请重试');
+                    console.error('❌ 审核申请异常:', error);
+                    
+                    // 详细错误处理
+                    if (error.response) {
+                        const errorMsg = error.response.data?.msg || 
+                                       error.response.data?.message || 
+                                       `服务器错误 (${error.response.status})`;
+                        alert('操作失败：' + errorMsg);
+                        console.error('响应错误:', error.response.data);
+                    } else if (error.request) {
+                        alert('操作失败：网络连接错误，请检查网络后重试');
+                        console.error('请求错误:', error.request);
+                    } else {
+                        alert('操作失败：' + error.message);
+                        console.error('其他错误:', error.message);
+                    }
                 }
             },
 
@@ -2739,8 +3007,8 @@
                 try {
                     await this.$axios.post('/api/community/applications/setAdmin', null, {
                         params: {
-                            communityId: this.communityId,
-                            userId: member.userId
+                        communityId: this.communityId,
+                        userId: member.userId
                         }
                     });
 
@@ -2764,8 +3032,8 @@
                 try {
                     await this.$axios.post('/api/community/applications/cancelAdmins', null, {
                         params: {
-                            communityId: this.communityId,
-                            userId: member.userId
+                        communityId: this.communityId,
+                        userId: member.userId
                         }
                     });
 
@@ -2782,39 +3050,96 @@
                 }
             },
 
-            // 禁言成员
+            // 禁言成员（使用正确的接口地址）
             async banMember(member) {
-                const reason = prompt(`请输入禁言 ${member.username} 的原因:`);
-                if (!reason) return;
+                if (!confirm(`确定要禁言 ${member.username} 吗？`)) return;
 
                 try {
-                    await this.$axios.post('/api/community/members/ban', {
+                    // 使用正确的接口地址
+                    await this.$axios.post('/api/community/applications/setBans', null, {
+                        params: {
                         communityId: this.communityId,
-                        userId: member.userId,
-                        reason: reason
+                            userId: member.userId
+                        }
                     });
 
-                    this.$toast.success(`${member.username} 已被禁言`);
+                    // 更新本地数据 - 将role设置为ban，标记为已禁言
+                    const memberIndex = this.members.findIndex(m => m.id === member.id);
+                    if (memberIndex !== -1) {
+                        this.$set(this.members[memberIndex], 'originalRole', 'ban');
+                        this.$set(this.members[memberIndex], 'isBanned', true);
+                        // 显示角色保持为MEMBER，但实际已被禁言
+                        this.$set(this.members[memberIndex], 'role', 'MEMBER');
+                    }
+
+                    // 如果是当前用户被禁言，更新全局状态
+                    if (member.userId === this.currentUserId) {
+                        this.isBanned = true;
+                    }
+
+                    alert(`${member.username} 已被禁言`);
+                    console.log('✅ 禁言操作完成 - role已更新为ban');
                 } catch (error) {
                     console.error('禁言成员失败:', error);
-                    this.$toast.error('操作失败，请重试');
+                    alert('操作失败，请重试');
                 }
             },
 
-            // 移除成员
+            // 解禁成员（使用正确的接口地址）
+            async unbanMember(member) {
+                if (!confirm(`确定要解禁 ${member.username} 吗？`)) return;
+
+                try {
+                    // 使用正确的接口地址
+                    await this.$axios.post('/api/community/applications/cancelBans', null, {
+                        params: {
+                            communityId: this.communityId,
+                            userId: member.userId
+                        }
+                    });
+
+                    // 更新本地数据 - 将role恢复为member，标记为已解禁
+                    const memberIndex = this.members.findIndex(m => m.id === member.id);
+                    if (memberIndex !== -1) {
+                        this.$set(this.members[memberIndex], 'originalRole', 'member');
+                        this.$set(this.members[memberIndex], 'isBanned', false);
+                        this.$set(this.members[memberIndex], 'role', 'MEMBER');
+                    }
+
+                    // 如果是当前用户被解禁，更新全局状态
+                    if (member.userId === this.currentUserId) {
+                        this.isBanned = false;
+                    }
+
+                    alert(`${member.username} 已解除禁言`);
+                    console.log('✅ 解禁操作完成 - role已恢复为member');
+                } catch (error) {
+                    console.error('解禁成员失败:', error);
+                    alert('操作失败，请重试');
+                }
+            },
+
+            // 移除成员（使用正确的接口地址）
             async removeMember(member) {
                 if (!confirm(`确定要将 ${member.username} 移除出社群吗？此操作不可撤销！`)) return;
 
                 try {
-                    await this.$axios.delete(`/api/community/members/${member.id}`);
+                    // 使用正确的接口地址和参数方式
+                    await this.$axios.post('/api/community/applications/deleteMembers', null, {
+                        params: {
+                            communityId: this.communityId,
+                            userId: member.userId
+                        }
+                    });
 
                     // 从本地数据中移除
                     this.members = this.members.filter(m => m.id !== member.id);
 
-                    this.$toast.success(`${member.username} 已被移除出社群`);
+                    alert(`${member.username} 已被移除出社群`);
+                    console.log('✅ 成员移除操作完成');
                 } catch (error) {
                     console.error('移除成员失败:', error);
-                    this.$toast.error('操作失败，请重试');
+                    alert('操作失败，请重试');
                 }
             },
 
@@ -3517,6 +3842,64 @@
             getRankNumberClass(rank) {
                 if (rank <= 3) return 'top-rank-number';
                 return 'normal-rank-number';
+            },
+
+            // 格式化申请时间
+            formatApplicationTime(timestamp) {
+                if (!timestamp) return '未知时间';
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diff = now - date;
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const days = Math.floor(hours / 24);
+
+                if (hours < 1) {
+                    return '刚刚申请';
+                } else if (hours < 24) {
+                    return `${hours}小时前申请`;
+                } else if (days < 7) {
+                    return `${days}天前申请`;
+                } else {
+                    return date.toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    }) + ' 申请';
+                }
+            },
+
+            // 批量同意申请
+            async batchApproveApplications() {
+                if (!confirm(`确定要同意所有 ${this.pendingApplications.length} 个待审核申请吗？`)) return;
+
+                try {
+                    const promises = this.pendingApplications.map(application => 
+                        this.reviewApplication(application.id, 'APPROVED')
+                    );
+                    
+                    await Promise.all(promises);
+                    console.log('✅ 批量同意申请完成');
+                } catch (error) {
+                    console.error('❌ 批量同意申请失败:', error);
+                    alert('批量操作失败，请重试');
+                }
+            },
+
+            // 批量拒绝申请
+            async batchRejectApplications() {
+                if (!confirm(`确定要拒绝所有 ${this.pendingApplications.length} 个待审核申请吗？此操作不可撤销！`)) return;
+
+                try {
+                    const promises = this.pendingApplications.map(application => 
+                        this.reviewApplication(application.id, 'REJECTED')
+                    );
+                    
+                    await Promise.all(promises);
+                    console.log('✅ 批量拒绝申请完成');
+                } catch (error) {
+                    console.error('❌ 批量拒绝申请失败:', error);
+                    alert('批量操作失败，请重试');
+                }
             },
         }
     };

@@ -75,8 +75,15 @@
                         </v-card-text>
 
                         <v-card-actions class="pt-0">
-                            <v-btn text color="primary" small @click="viewCommunity(community.id)">
-                                查看详情
+                            <v-btn 
+                                text 
+                                color="primary" 
+                                small 
+                                @click="checkMembershipAndEnter(community.id)"
+                                :loading="community.checking"
+                            >
+                                <v-icon left small>mdi-chat</v-icon>
+                                进入群聊
                             </v-btn>
                             <v-spacer></v-spacer>
                             <v-btn color="primary" small depressed @click="openJoinDialog(community)">
@@ -444,9 +451,10 @@
                 this.$vuetify.goTo(0, { duration: 300 });
             },
             
-            viewCommunity(communityId) {
-                this.$router.push(`/community/${communityId}`);
-            },
+            // 注释掉原来的直接跳转方法
+            // viewCommunity(communityId) {
+            //     this.$router.push(`/community/${communityId}`);
+            // },
             
             openJoinDialog(community) {
                 this.communityToJoin = community;
@@ -609,7 +617,86 @@
             // 删除头像
             removeAvatar() {
                 this.newCommunity.avatarUrl = '';
-            }
+            },
+
+            // 检查成员身份并进入群聊（使用成员列表接口）
+            async checkMembershipAndEnter(communityId) {
+                // 设置加载状态
+                const community = this.allCommunities.find(c => c.id === communityId);
+                if (community) {
+                    this.$set(community, 'checking', true);
+                }
+
+                try {
+                    console.log('🔍 检查用户是否为社群成员...', communityId);
+                    
+                    // 首先获取当前用户ID
+                    const currentUserResponse = await this.$axios.get('/api/users/me');
+                    if (currentUserResponse.data.code !== 1) {
+                        alert('请先登录后再尝试进入群聊');
+                        return;
+                    }
+                    
+                    const currentUserId = currentUserResponse.data.data.userId;
+                    console.log('👤 当前用户ID:', currentUserId);
+                    
+                    // 获取社群成员列表
+                    const membersResponse = await this.$axios.get(`/api/community/members/${communityId}`);
+                    
+                    console.log('📋 成员列表响应:', membersResponse.data);
+                    
+                    if (membersResponse.data.code === 1 && Array.isArray(membersResponse.data.data)) {
+                        const members = membersResponse.data.data;
+                        
+                        // 在成员列表中查找当前用户
+                        const currentUserMember = members.find(member => member.userId === currentUserId);
+                        
+                        if (currentUserMember) {
+                            // 用户是成员，可以进入群聊
+                            console.log('✅ 用户是社群成员，角色:', currentUserMember.role);
+                            this.$router.push(`/community/${communityId}`);
+                        } else {
+                            // 用户不是成员，显示提示
+                            console.log('❌ 用户不是社群成员，无法进入群聊');
+                            this.showMembershipRequiredDialog(community);
+                        }
+                    } else {
+                        console.error('❌ 获取成员列表失败:', membersResponse.data);
+                        alert('获取社群信息失败，请重试');
+                    }
+                } catch (error) {
+                    console.error('❌ 检查成员身份异常:', error);
+                    
+                    if (error.response) {
+                        if (error.response.status === 401) {
+                            alert('请先登录后再尝试进入群聊');
+                            // 可以跳转到登录页面
+                            // this.$router.push('/login');
+                        } else if (error.response.status === 403) {
+                            alert('您没有权限访问该社群');
+                        } else if (error.response.status === 404) {
+                            alert('社群不存在或已被删除');
+                        } else {
+                            alert('网络错误，请检查网络连接后重试');
+                        }
+                    } else {
+                        alert('网络错误，请检查网络连接后重试');
+                    }
+                } finally {
+                    // 清除加载状态
+                    if (community) {
+                        this.$set(community, 'checking', false);
+                    }
+                }
+            },
+
+            // 显示需要成员身份的提示
+            showMembershipRequiredDialog(community) {
+                const shouldJoin = confirm(`您需要先加入"${community.name}"才能进入群聊。\n\n是否现在申请加入？`);
+                if (shouldJoin) {
+                    this.openJoinDialog(community);
+                }
+            },
         }
     };
 </script>

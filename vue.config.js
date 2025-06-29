@@ -6,9 +6,9 @@ module.exports = defineConfig({
   devServer: {
     port: 8081,
     host: 'localhost',
-    client: {
-      webSocketURL: 'ws://localhost:8081/ws'
-    },
+    // client: {
+    //   webSocketURL: 'ws://localhost:8081/ws'
+    // },
     proxy: {
       '/api': {
         target: 'http://localhost:8080', // Your backend server
