@@ -1,6 +1,5 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 import LoginRegister from '../views/LoginRegister.vue'
 import FrontPage from '../views/FrontPage.vue'
 // import CommunityView from '../views/CommunityView.vue'
@@ -10,10 +9,9 @@ import UserProfile from '../views/UserProfile.vue'
 Vue.use(VueRouter)
 
 const routes = [
-  {
+    {
     path: '/',
-    name: 'home',
-    component: HomeView
+    redirect: '/LoginRegister'
   },
   {
     path: '/LoginRegister',
