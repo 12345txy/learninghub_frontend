@@ -140,7 +140,7 @@
         drawer: false,
         menuItems: [
           { title: '发现社群', icon: 'mdi-radar', iconColor: 'indigo', to: '/FrontPage' },
-          { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/profile/:id' }
+          { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/profile/me' }
         ],
         currentItemTitle: '欢迎来到游学系统',
         snackbar: {
@@ -166,19 +166,27 @@
     },
     created() {
       try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userStr = localStorage.getItem('user');
+        console.log('🔍 localStorage中的用户字符串:', userStr);
+        
+        const user = JSON.parse(userStr || '{}');
+        console.log('📱 解析后的用户信息:', user);
+        console.log('👤 用户ID:', user.userId, '类型:', typeof user.userId);
         
         // 🔥 动态设置个人主页路由
         if (user && user.userId) {
           const profileItem = this.menuItems.find(item => item.title === '个人主页');
           if (profileItem) {
             profileItem.to = `/profile/${user.userId}`;
+            console.log('✅ 个人主页路由已更新为:', profileItem.to);
           }
         } else {
-          // 如果没有用户ID，默认跳转到 '/profile/me'
+          console.log('⚠️ 用户ID不存在，使用默认路由');
+          // 如果没有用户ID，使用'me'作为参数
           const profileItem = this.menuItems.find(item => item.title === '个人主页');
           if (profileItem) {
             profileItem.to = '/profile/me';
+            console.log('🔄 使用默认个人主页路由:', profileItem.to);
           }
         }
         
@@ -191,11 +199,17 @@
             to: '/admin'
           });
         }
+        
+        console.log('📋 最终菜单项:', this.menuItems);
       } catch (e) {
-        console.error('解析用户信息失败:', e);
+        console.error('❌ 解析用户信息失败:', e);
+        // 如果出错，设置为默认路由
+        const profileItem = this.menuItems.find(item => item.title === '个人主页');
+        if (profileItem) {
+          profileItem.to = '/profile/me';
+        }
       }
       this.$root.$showSnackbar = this.showSnackbar;
-      console.log(this.$router.resolve('/admin'));
     },
 
     methods: {
@@ -232,19 +246,29 @@
       async approveCommunity(community) {
         community.processing = true;
         try {
-          const response = await this.$axios.post('/api/community/updateStatus', {
-            communityId: community.id,
-            status: 1
+          // 方式1：使用查询参数
+          const response = await this.$axios.post('/api/community/updateStatus', null, {
+            params: {
+              communityId: community.id,
+              status: 1
+            }
           });
+          
+          // 或者方式2：使用URL路径参数
+          // const response = await this.$axios.post(`/api/community/${community.id}/updateStatus`, {
+          //   status: 1
+          // });
+          
           if (response.data.code === 1) {
             this.showSnackbar(`社群 "${community.name}" 审核通过`, 'success');
             await this.refreshCommunityList();
           } else {
-            this.showSnackbar('审核失败: ' + response.data.msg, 'error');
+            this.showSnackbar('审核失败: ' + (response.data.msg || '未知错误'), 'error');
           }
         } catch (error) {
           console.error('审核社群失败:', error);
-          this.showSnackbar('审核失败', 'error');
+          console.error('错误详情:', error.response?.data);
+          this.showSnackbar('审核失败: ' + (error.response?.data?.message || error.message), 'error');
         } finally {
           community.processing = false;
         }
@@ -254,19 +278,25 @@
       async rejectCommunity(community) {
         community.processing = true;
         try {
-          const response = await this.$axios.post('/api/community/updateStatus', {
-            communityId: community.id,
-            status: 0
+          // 对于拒绝，status应该设置为什么值？可能需要确认
+          // 如果0表示待审核，可能需要使用-1或2表示已拒绝
+          const response = await this.$axios.post('/api/community/updateStatus', null, {
+            params: {
+              communityId: community.id,
+              status: -1  // 或者根据后端定义使用其他值
+            }
           });
+          
           if (response.data.code === 1) {
             this.showSnackbar(`社群 "${community.name}" 已拒绝`, 'warning');
             await this.refreshCommunityList();
           } else {
-            this.showSnackbar('操作失败: ' + response.data.msg, 'error');
+            this.showSnackbar('操作失败: ' + (response.data.msg || '未知错误'), 'error');
           }
         } catch (error) {
           console.error('拒绝社群失败:', error);
-          this.showSnackbar('操作失败', 'error');
+          console.error('错误详情:', error.response?.data);
+          this.showSnackbar('操作失败: ' + (error.response?.data?.message || error.message), 'error');
         } finally {
           community.processing = false;
         }
@@ -310,7 +340,7 @@
       getMenuItems() {
         const baseItems = [
           { title: '发现社群', icon: 'mdi-radar', iconColor: 'indigo', to: '/FrontPage' },
-          { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/profile/:id' }
+          { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/profile/me' }
         ];
         try {
           const user = JSON.parse(localStorage.getItem('user') || '{}');
